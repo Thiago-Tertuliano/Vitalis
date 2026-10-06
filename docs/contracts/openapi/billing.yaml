@@ -1,0 +1,230 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Billing API
+  version: 0.1.0
+  description: |
+    PIX, cartao, carteira, assinaturas, ledger e split.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8086
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/payment-intents:
+    post:
+      tags: [domain]
+      summary: Criar PaymentIntent
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [valor_centavos, meio, reference_type, reference_id]
+              properties:
+                valor_centavos: { type: integer, minimum: 1 }
+                moeda: { type: string, default: BRL }
+                meio: { type: string, enum: [pix, cartao, carteira] }
+                reference_type: { type: string, enum: [subscription, order, wallet_topup] }
+                reference_id: { type: string }
+      responses:
+        '201': { description: Intent criado }
+  /v1/payment-intents/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      tags: [domain]
+      summary: Obter PaymentIntent
+      responses:
+        '200': { description: Intent }
+  /v1/payment-intents/{id}/pix:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+      - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      tags: [domain]
+      summary: Gerar cobranca PIX
+      responses:
+        '200': { description: QR / EMV / expires_at }
+  /v1/payment-intents/{id}/cancel:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [domain]
+      summary: Cancelar intent
+      responses:
+        '200': { description: Cancelado }
+  /v1/payment-intents/{id}/refund:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+      - $ref: '#/components/parameters/IdempotencyKey'
+    post:
+      tags: [domain]
+      summary: Estornar parcial/total
+      responses:
+        '200': { description: Estorno iniciado }
+  /v1/subscriptions:
+    post:
+      tags: [domain]
+      summary: Assinar ou trocar plano
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plano_id]
+              properties:
+                plano_id: { type: string }
+                tipo_troca: { type: string, enum: [nova, upgrade, downgrade, troca] }
+                meio: { type: string, enum: [pix, cartao, carteira] }
+      responses:
+        '201': { description: Assinatura processada }
+  /v1/subscriptions/me:
+    get:
+      tags: [domain]
+      summary: Minha assinatura ativa
+      responses:
+        '200': { description: Assinatura }
+        '404': { description: Sem assinatura }
+  /v1/subscriptions/{id}/cancel:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      tags: [domain]
+      summary: Cancelar assinatura
+      responses:
+        '200': { description: Cancelada }
+  /v1/invoices:
+    get:
+      tags: [domain]
+      summary: Listar faturas
+      responses:
+        '200': { description: Lista }
+  /v1/wallets/me:
+    get:
+      tags: [domain]
+      summary: Saldo da carteira
+      responses:
+        '200': { description: Wallet }
+  /v1/wallets/topup:
+    post:
+      tags: [domain]
+      summary: Creditar carteira
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201': { description: Top-up criado }
+  /v1/settlements:
+    get:
+      tags: [domain]
+      summary: Liquidacoes parceiro/admin
+      responses:
+        '200': { description: Lista }
+  /v1/commissions:
+    get:
+      tags: [domain]
+      summary: Comissoes do profissional
+      responses:
+        '200': { description: Lista }
+  /v1/internal/subscriptions/active:
+    get:
+      tags: [domain]
+      summary: Gate interno — assinatura ativa (Clinical)
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Status assinatura }
+  /v1/webhooks/pagamentos:
+    post:
+      tags: [domain]
+      summary: Webhook * API Pagamentos
+      security: []
+      responses:
+        '200': { description: Aceito }
+        '401': { description: Assinatura invalida }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura.
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }

@@ -1,0 +1,112 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Comms API
+  version: 0.1.0
+  description: |
+    Notificacoes, chat e WebSocket.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8087
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/notificacoes:
+    get:
+      tags: [domain]
+      summary: Listar notificacoes
+      responses: { '200': { description: Lista } }
+  /v1/notificacoes/{id}/lida:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [domain]
+      summary: Marcar como lida
+      responses: { '200': { description: OK } }
+  /v1/chat/salas:
+    get:
+      tags: [domain]
+      summary: Listar salas
+      responses: { '200': { description: Lista } }
+    post:
+      tags: [domain]
+      summary: Criar sala
+      responses: { '201': { description: Criada } }
+  /v1/chat/salas/{id}/mensagens:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Historico
+      responses: { '200': { description: Mensagens } }
+    post:
+      tags: [domain]
+      summary: Enviar mensagem
+      responses: { '201': { description: Enviada } }
+  /v1/realtime:
+    get:
+      tags: [domain]
+      summary: Endpoint WS
+      responses: { '101': { description: Upgrade } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura (Billing).
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }

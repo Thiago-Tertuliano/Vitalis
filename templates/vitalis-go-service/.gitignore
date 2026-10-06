@@ -1,0 +1,24 @@
+# Binaries / deps
+/bin/
+/dist/
+*.exe
+*.test
+*.out
+coverage.*
+
+# Env
+.env
+.env.local
+
+# Chaves (nunca versionar)
+secrets/
+*.pem
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Goose / tmp
+tmp/

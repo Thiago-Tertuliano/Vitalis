@@ -1,0 +1,30 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Service Template API
+  version: 0.1.0
+  description: Substitua pelo OpenAPI canônico de docs/contracts/openapi/<servico>.yaml
+paths:
+  /health:
+    get:
+      summary: Liveness
+      responses:
+        '200': { description: OK }
+  /ready:
+    get:
+      summary: Readiness
+      responses:
+        '200': { description: Ready }
+  /v1/examples:
+    post:
+      summary: Exemplo de domínio (remover no serviço real)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        '201': { description: Created }
