@@ -1,0 +1,17 @@
+# Segredos e config local
+.env
+.env.local
+secrets/
+*.pem
+
+# Binarios
+*.exe
+/bin/
+/dist/
+
+# IDE / OS
+.cursor/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

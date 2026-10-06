@@ -1,0 +1,90 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Audit API
+  version: 0.1.0
+  description: |
+    Trilha LGPD append-only.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8091
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/audit/events:
+    get:
+      tags: [domain]
+      summary: Consultar trilha (admin)
+      parameters:
+        - { name: actor_id, in: query, schema: { type: string } }
+        - { name: resource_id, in: query, schema: { type: string } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses: { '200': { description: Eventos }, '403': { description: Somente admin } }
+  /v1/internal/audit/ingest:
+    post:
+      tags: [domain]
+      summary: Ingestao interna
+      responses: { '202': { description: Aceito } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura (Billing).
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }

@@ -1,0 +1,119 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Gateway
+  version: 0.1.0
+  description: |
+    Ponto unico de entrada. Roteia /v1/* e WS; sem dominio de negocio.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8080
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/realtime:
+    get:
+      tags: [domain]
+      summary: WebSocket proxy -> Comms
+      responses:
+        '101': { description: Switching Protocols }
+  /v1/webhooks/pagamentos:
+    post:
+      tags: [domain]
+      summary: Webhook * API Pagamentos -> Billing
+      security: []
+      responses:
+        '200': { description: Encaminhado }
+x-routing-table:
+  /v1/auth/*: identity:8081
+  /v1/usuarios/*: identity:8081
+  /v1/payment-intents/*: billing:8086
+  /v1/subscriptions/*: billing:8086
+  /v1/wallets/*: billing:8086
+  /v1/invoices/*: billing:8086
+  /v1/settlements/*: billing:8086
+  /v1/commissions/*: billing:8086
+  /v1/especialidades: clinical:8082
+  /v1/medicos: clinical:8082
+  /v1/disponibilidade: clinical:8082
+  /v1/consultas/*: clinical:8082
+  /v1/triagens/*: clinical:8082
+  /v1/videochamadas/*: clinical:8082
+  /v1/prescricoes/*: clinical:8082
+  /v1/farmacias/*: commerce:8083
+  /v1/categorias: commerce:8083
+  /v1/produtos/*: commerce:8083
+  /v1/estoque/*: commerce:8083
+  /v1/pedidos/*: orders:8084
+  /v1/entregas/*: delivery:8085
+  /v1/motoboys/*: delivery:8085
+  /v1/notificacoes/*: comms:8087
+  /v1/chat/*: comms:8087
+  /v1/tickets/*: support:8088
+  /v1/artigos-ajuda/*: support:8088
+  /v1/objetos/*: files:8089
+  /v1/pdf/*: files:8089
+  /v1/search: search:8090
+  /v1/audit/*: audit:8091
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura (Billing).
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }

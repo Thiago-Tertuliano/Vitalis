@@ -1,0 +1,122 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Delivery API
+  version: 0.1.0
+  description: |
+    Motoboy, alocacao e rastreamento.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8085
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/motoboys/me:
+    get:
+      tags: [domain]
+      summary: Perfil do motoboy
+      responses: { '200': { description: Courier } }
+  /v1/motoboys/me/status:
+    patch:
+      tags: [domain]
+      summary: online/offline/busy
+      responses: { '200': { description: OK } }
+  /v1/entregas:
+    get:
+      tags: [domain]
+      summary: Listar entregas
+      responses: { '200': { description: Lista } }
+  /v1/entregas/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Detalhe entrega
+      responses: { '200': { description: Entrega } }
+  /v1/entregas/{id}/aceitar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [domain]
+      summary: Aceitar corrida
+      responses: { '200': { description: Assigned } }
+  /v1/entregas/{id}/status:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      tags: [domain]
+      summary: Atualizar status
+      responses: { '200': { description: OK } }
+  /v1/entregas/{id}/rastreamento:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Pontos de rastreio
+      responses: { '200': { description: Tracking } }
+    post:
+      tags: [domain]
+      summary: Enviar ponto GPS
+      responses: { '201': { description: Ponto registrado } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura (Billing).
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }
