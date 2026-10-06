@@ -1,0 +1,113 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Files API
+  version: 0.1.0
+  description: |
+    Upload, URLs assinadas e PDF.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8089
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/objetos:
+    post:
+      tags: [domain]
+      summary: Metadata + URL upload
+      responses: { '201': { description: Upload URL } }
+  /v1/objetos/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Metadata
+      responses: { '200': { description: Objeto } }
+  /v1/objetos/{id}/url-assinada:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [domain]
+      summary: URL assinada download
+      responses: { '200': { description: URL TTL curto } }
+  /v1/objetos/{id}/confirmar:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      tags: [domain]
+      summary: Confirmar upload
+      responses: { '200': { description: Confirmado } }
+  /v1/pdf/jobs:
+    post:
+      tags: [domain]
+      summary: Enfileirar PDF
+      responses: { '202': { description: Job criado } }
+  /v1/pdf/jobs/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Status job PDF
+      responses: { '200': { description: Job } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura (Billing).
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }

@@ -1,0 +1,146 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Clinical API
+  version: 0.1.0
+  description: |
+    Agenda, consultas, triagem, videochamada e prescricoes.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8082
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/especialidades:
+    get:
+      tags: [domain]
+      summary: Listar especialidades
+      security: []
+      responses: { '200': { description: Lista } }
+  /v1/medicos:
+    get:
+      tags: [domain]
+      summary: Buscar medicos
+      responses: { '200': { description: Lista } }
+  /v1/disponibilidade:
+    get:
+      tags: [domain]
+      summary: Slots disponiveis
+      responses: { '200': { description: Slots } }
+  /v1/consultas:
+    get:
+      tags: [domain]
+      summary: Listar consultas do usuario
+      responses: { '200': { description: Lista } }
+    post:
+      tags: [domain]
+      summary: Agendar consulta (exige plano ativo)
+      responses:
+        '201': { description: Agendada }
+        '402': { description: Plano inativo }
+  /v1/consultas/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Detalhe da consulta
+      responses: { '200': { description: Consulta }, '403': { description: Sem acesso } }
+    patch:
+      tags: [domain]
+      summary: Atualizar status
+      responses: { '200': { description: OK } }
+  /v1/triagens:
+    post:
+      tags: [domain]
+      summary: Enviar triagem
+      responses: { '201': { description: Criada } }
+  /v1/triagens/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Resultado triagem
+      responses: { '200': { description: Triagem } }
+  /v1/videochamadas/sala:
+    post:
+      tags: [domain]
+      summary: Criar/entrar sala de video
+      responses: { '201': { description: Sessao } }
+  /v1/prescricoes:
+    get:
+      tags: [domain]
+      summary: Listar prescricoes
+      responses: { '200': { description: Lista } }
+    post:
+      tags: [domain]
+      summary: Emitir prescricao (medico)
+      responses: { '201': { description: Emitida }, '403': { description: Sem role medico } }
+  /v1/prescricoes/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Detalhe prescricao
+      responses: { '200': { description: Prescricao } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura (Billing).
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }

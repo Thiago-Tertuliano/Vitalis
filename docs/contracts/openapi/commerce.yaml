@@ -1,0 +1,126 @@
+openapi: 3.0.3
+info:
+  title: Vitalis Commerce API
+  version: 0.1.0
+  description: |
+    Farmacias, catalogo e estoque.
+
+    Contrato canonico Vitalis-contracts. Clientes publicos via Gateway :8080.
+servers:
+  - url: http://localhost:8083
+    description: Servico direto (rede interna)
+  - url: http://localhost:8080
+    description: Via Gateway
+tags:
+  - name: health
+  - name: domain
+security:
+  - bearerAuth: []
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Liveness
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      tags: [health]
+      summary: Readiness
+      security: []
+      responses:
+        '200': { description: Ready }
+        '503': { description: Not ready }
+
+  /v1/farmacias:
+    get:
+      tags: [domain]
+      summary: Listar farmacias
+      responses: { '200': { description: Lista } }
+    post:
+      tags: [domain]
+      summary: Cadastrar farmacia
+      responses: { '201': { description: Criada } }
+  /v1/farmacias/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Detalhe farmacia
+      responses: { '200': { description: Farmacia } }
+  /v1/categorias:
+    get:
+      tags: [domain]
+      summary: Categorias
+      responses: { '200': { description: Lista } }
+  /v1/produtos:
+    get:
+      tags: [domain]
+      summary: Catalogo
+      responses: { '200': { description: Lista } }
+    post:
+      tags: [domain]
+      summary: Criar produto (farmacia)
+      responses: { '201': { description: Criado } }
+  /v1/produtos/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      tags: [domain]
+      summary: Detalhe produto
+      responses: { '200': { description: Produto } }
+    put:
+      tags: [domain]
+      summary: Atualizar produto
+      responses: { '200': { description: OK } }
+  /v1/estoque/reservar:
+    post:
+      tags: [domain]
+      summary: Reservar estoque (Orders)
+      responses: { '200': { description: Reservado }, '409': { description: Sem estoque } }
+  /v1/estoque/liberar:
+    post:
+      tags: [domain]
+      summary: Liberar reserva
+      responses: { '200': { description: Liberado } }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+      description: Obrigatorio em POST de cobranca/assinatura (Billing).
+    RequestId:
+      name: X-Request-Id
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    Error:
+      type: object
+      required: [erro, codigo]
+      properties:
+        erro: { type: string }
+        codigo: { type: string }
+        request_id: { type: string }
+        detalhes:
+          type: object
+          additionalProperties: true
+    Health:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        service: { type: string }
