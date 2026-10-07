@@ -1,0 +1,21 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.x"
+      - name: Vet & test
+        run: |
+          go mod tidy
+          go vet ./...
+          go test ./...
+      - name: Build
+        run: go build -o /tmp/gateway ./cmd/api
