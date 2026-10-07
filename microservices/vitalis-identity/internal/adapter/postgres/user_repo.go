@@ -19,13 +19,13 @@ func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
 	return &UserRepo{pool: pool}
 }
 
-//Create grava user + credential + roles na MESMA transação.
+// Create grava user + credential + roles na MESMA transação.
 func (r *UserRepo) Create(ctx context.Context, u domain.User, passwordHash string) error {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	_, err = tx.Exec(ctx, `
 		INSERT INTO users (id, email, nome, telefone, status, cpf, data_nascimento, created_at, updated_at)
 		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
@@ -113,7 +113,7 @@ func (r *UserRepo) ReplaceRoles(ctx context.Context, userID string, roles []stri
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 	if _, err := tx.Exec(ctx, `DELETE FROM user_roles WHERE user_id=$1`, userID); err != nil {
 		return err
 	}

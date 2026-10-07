@@ -29,4 +29,3 @@ func NewPool(ctx context.Context, databaseURL string) (*pgxpool.Pool, error) {
 	}
 	return pool, nil
 }
-

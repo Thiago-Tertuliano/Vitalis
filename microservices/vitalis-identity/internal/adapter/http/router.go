@@ -26,10 +26,9 @@ type Dependencies struct {
 	Passwords   *app.PasswordResetService
 }
 
-func NewRouter(deps Dependencies) http.Handler {
+func NewRouter(deps Dependencies) http.Handler { //nolint:gocyclo // só registra rotas; cada handler inline é curto
 	r := chi.NewRouter()
 	r.Use(chimw.Recoverer)
-	r.Use(chimw.RealIP)
 	r.Use(middleware.RequestID)
 	r.Use(middleware.InternalIdentity)
 
@@ -178,7 +177,7 @@ func NewRouter(deps Dependencies) http.Handler {
 
 		r.Post("/auth/redefinir-senha", func(w http.ResponseWriter, req *http.Request) {
 			var body struct {
-				Token    string `json:"token"`
+				Token     string `json:"token"`
 				NovaSenha string `json:"nova_senha"`
 			}
 			if err := json.NewDecoder(req.Body).Decode(&body); err != nil {

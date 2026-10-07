@@ -79,4 +79,3 @@ func (p *Publisher) flush(ctx context.Context) error {
 	}
 	return rows.Err()
 }
-

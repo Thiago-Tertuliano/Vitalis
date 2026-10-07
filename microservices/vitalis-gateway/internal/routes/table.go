@@ -12,7 +12,7 @@ const (
 // Route liga um prefixo de URL a um serviço interno.
 type Route struct {
 	Prefix   string
-	Upstream string   // chave em config.Upstreams
+	Upstream string // chave em config.Upstreams
 	Access   Access
 	Roles    []string // vazio = qualquer usuário autenticado; senão exige ao menos uma
 }

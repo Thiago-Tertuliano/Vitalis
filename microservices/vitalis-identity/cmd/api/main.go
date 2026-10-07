@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Rede-Medica-D-Excelencia-Vitalis/Vitalis-identity/internal/adapter/crypto"
 	httpserver "github.com/Rede-Medica-D-Excelencia-Vitalis/Vitalis-identity/internal/adapter/http"
@@ -58,7 +59,7 @@ func main() {
 		cfg.JWTPublicKeyPath,
 		cfg.JWTIssuer,
 		cfg.JWTAudience,
-		cfg.AcessTTLMin,    // campo com typo no config — ok se for int
+		cfg.AcessTTLMin, // campo com typo no config — ok se for int
 		cfg.RefreshTTLDays,
 		refresh,
 	)
@@ -85,7 +86,11 @@ func main() {
 		Passwords:   passwordSvc,
 	})
 
-	srv := &http.Server{Addr: cfg.HTTPAddr, Handler: router}
+	srv := &http.Server{
+		Addr:              cfg.HTTPAddr,
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+	}
 	go func() {
 		log.Info("api listening", "addr", cfg.HTTPAddr)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

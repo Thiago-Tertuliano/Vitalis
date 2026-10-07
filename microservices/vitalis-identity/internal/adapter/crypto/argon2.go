@@ -52,9 +52,9 @@ func (h *Argon2Hasher) Compare(encoded, plain string) bool {
 	}
 	salt, err1 := base64.RawStdEncoding.DecodeString(parts[4])
 	want, err2 := base64.RawStdEncoding.DecodeString(parts[5])
-	if err1 != nil || err2 != nil {
+	if err1 != nil || err2 != nil || len(want) == 0 || len(want) > 1024 {
 		return false
 	}
-	got := argon2.IDKey([]byte(plain), salt, timeCost, memory, threads, uint32(len(want)))
+	got := argon2.IDKey([]byte(plain), salt, timeCost, memory, threads, uint32(len(want))) //nolint:gosec // len(want) limitado a 1024 acima
 	return subtle.ConstantTimeCompare(got, want) == 1
 }

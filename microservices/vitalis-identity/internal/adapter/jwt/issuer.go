@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Rede-Medica-D-Excelencia-Vitalis/Vitalis-identity/internal/domain"
@@ -16,6 +17,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
+
+const keyID = "vitalis-identity-1"
 
 // Issuer assina access/refresh RS256 e expõe JWKS (chave pública).
 // Live: privada só no Identity; Gateway valida via JWKS.
@@ -33,11 +36,13 @@ type accessClaims struct {
 	UserID string   `json:"uid"`
 	Email  string   `json:"email"`
 	Roles  []string `json:"roles"`
+	Type   string   `json:"typ"`
 	jwt.RegisteredClaims
 }
 
 type refreshClaims struct {
 	UserID string `json:"uid"`
+	Type   string `json:"typ"`
 	jwt.RegisteredClaims
 }
 
@@ -72,6 +77,7 @@ func (i *Issuer) IssueAccess(user domain.User) (string, int, error) {
 		UserID: user.ID,
 		Email:  user.Email,
 		Roles:  user.Roles,
+		Type:   "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    i.issuer,
 			Subject:   user.ID,
@@ -82,6 +88,7 @@ func (i *Issuer) IssueAccess(user domain.User) (string, int, error) {
 		},
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	t.Header["kid"] = keyID
 	signed, err := t.SignedString(i.private)
 	if err != nil {
 		return "", 0, err
@@ -100,6 +107,7 @@ func (i *Issuer) IssueRefresh(ctx context.Context, userID string) (string, error
 
 	claims := refreshClaims{
 		UserID: userID,
+		Type:   "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			Issuer:    i.issuer,
 			Subject:   userID,
@@ -110,6 +118,7 @@ func (i *Issuer) IssueRefresh(ctx context.Context, userID string) (string, error
 		},
 	}
 	t := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	t.Header["kid"] = keyID
 	return t.SignedString(i.private)
 }
 
@@ -124,7 +133,7 @@ func (i *Issuer) ParseRefresh(token string) (jti, userID string, err error) {
 		return "", "", err
 	}
 	claims, ok := parsed.Claims.(*refreshClaims)
-	if !ok || !parsed.Valid {
+	if !ok || !parsed.Valid || claims.Type != "refresh" {
 		return "", "", fmt.Errorf("refresh inválido")
 	}
 	return claims.ID, claims.UserID, nil
@@ -139,7 +148,7 @@ func (i *Issuer) PublicJWKS() (map[string]any, error) {
 				"kty": "RSA",
 				"use": "sig",
 				"alg": "RS256",
-				"kid": "vitalis-identity-1",
+				"kid": keyID,
 				"n":   base64.RawURLEncoding.EncodeToString(n.Bytes()),
 				"e":   base64.RawURLEncoding.EncodeToString(e.Bytes()),
 			},
@@ -148,7 +157,7 @@ func (i *Issuer) PublicJWKS() (map[string]any, error) {
 }
 
 func loadPrivateKey(path string) (*rsa.PrivateKey, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
@@ -173,7 +182,7 @@ func loadPrivateKey(path string) (*rsa.PrivateKey, error) {
 }
 
 func loadPublicKey(path string) (*rsa.PublicKey, error) {
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
