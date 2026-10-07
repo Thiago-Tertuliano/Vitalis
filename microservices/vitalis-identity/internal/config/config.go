@@ -23,7 +23,7 @@ type Config struct {
 
 	JWTPrivateKeyPath string
 	JWTPublicKeyPath  string
-	JWTIssuer		  string
+	JWTIssuer         string
 	JWTAudience       string
 	AcessTTLMin       int
 	RefreshTTLDays    int
@@ -31,20 +31,20 @@ type Config struct {
 
 func Load() (Config, error) {
 	cfg := Config{
-		ServiceName:     getenv("SERVICE_NAME", "vitalis-identity"),
-		HTTPAddr:        getenv("HTTP_ADDR", ":8080"),
-		Env:             getenv("APP_ENV", "local"),
-		DatabaseURL:     os.Getenv("DATABASE_URL"),
-		RedisAddr:       getenv("REDIS_ADDR", "localhost:6379"),
-		RedisPass:       os.Getenv("REDIS_PASSWORD"),
-		RedisDB:         getenvInt("REDIS_DB", 0),
-		ShutdownTimeout: time.Duration(getenvInt("SHUTDOWN_TIMEOUT_SEC", 10)) * time.Second,
+		ServiceName:       getenv("SERVICE_NAME", "vitalis-identity"),
+		HTTPAddr:          getenv("HTTP_ADDR", ":8080"),
+		Env:               getenv("APP_ENV", "local"),
+		DatabaseURL:       os.Getenv("DATABASE_URL"),
+		RedisAddr:         getenv("REDIS_ADDR", "localhost:6379"),
+		RedisPass:         os.Getenv("REDIS_PASSWORD"),
+		RedisDB:           getenvInt("REDIS_DB", 0),
+		ShutdownTimeout:   time.Duration(getenvInt("SHUTDOWN_TIMEOUT_SEC", 10)) * time.Second,
 		JWTPrivateKeyPath: getenv("JWT_PRIVATE_KEY_PATH", "./secrets/jwt_private.pem"),
-		JWTPublicKeyPath: getenv("JWT_PUBLIC_KEY_PATH", "./secrets/jwt_public.pem"),
-		JWTIssuer: getenv("JWT_ISSUER", "vitalis-identity"),
-		JWTAudience: getenv("JWT_AUDIENCE", "vitalis"),
-		AcessTTLMin: getenvInt("JWT_ACCESS_TTL_MIN", 15),
-		RefreshTTLDays: getenvInt("JWT_REFRESH_TTL_DAYS", 7),
+		JWTPublicKeyPath:  getenv("JWT_PUBLIC_KEY_PATH", "./secrets/jwt_public.pem"),
+		JWTIssuer:         getenv("JWT_ISSUER", "vitalis-identity"),
+		JWTAudience:       getenv("JWT_AUDIENCE", "vitalis"),
+		AcessTTLMin:       getenvInt("JWT_ACCESS_TTL_MIN", 15),
+		RefreshTTLDays:    getenvInt("JWT_REFRESH_TTL_DAYS", 7),
 	}
 	if cfg.DatabaseURL == "" {
 		return cfg, fmt.Errorf("DATABASE_URL Ã© obrigatÃ³rio")
@@ -70,4 +70,3 @@ func getenvInt(k string, def int) int {
 	}
 	return n
 }
-

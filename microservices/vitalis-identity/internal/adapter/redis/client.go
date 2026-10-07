@@ -21,4 +21,3 @@ func NewClient(addr, password string, db int) (*redis.Client, error) {
 	}
 	return rdb, nil
 }
-

@@ -35,4 +35,3 @@ func (w *Writer) Enqueue(ctx context.Context, e Event) error {
 	`, e.ID, e.Type, e.Producer, e.Version, e.CorrelationID, e.Data, time.Now().UTC())
 	return err
 }
-

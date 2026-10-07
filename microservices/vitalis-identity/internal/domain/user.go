@@ -3,23 +3,23 @@ package domain
 import "time"
 
 const (
-	StatusActive 	= "active"
-	StatusPending 	= "pending_verification"
+	StatusActive    = "active"
+	StatusPending   = "pending_verification"
 	StatusSuspended = "suspended"
-	StatusDelete 	= "deleted"
+	StatusDelete    = "deleted"
 )
 
 type User struct {
-	ID 				string
-	Email			string
-	Nome 			string
-	Telefone 		string
-	Status 			string
-	CPF 			string
-	DataNascimento 	*time.Time
-	Roles			[]string
-	CreatedAt		time.Time
-	UpdateAt		time.Time
+	ID             string
+	Email          string
+	Nome           string
+	Telefone       string
+	Status         string
+	CPF            string
+	DataNascimento *time.Time
+	Roles          []string
+	CreatedAt      time.Time
+	UpdateAt       time.Time
 }
 
 func (u User) PodeReceberToken() bool { return u.Status == StatusActive }

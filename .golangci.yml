@@ -1,0 +1,35 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard # errcheck, govet, ineffassign, staticcheck, unused
+  enable:
+    - gosec
+    - bodyclose
+    - errorlint
+    - noctx
+    - unconvert
+    - gocyclo
+    - misspell
+  settings:
+    gocyclo:
+      min-complexity: 30
+    gosec:
+      excludes:
+        - G104 # erros não verificados: já coberto pelo errcheck
+  exclusions:
+    presets:
+      - std-error-handling
+    rules:
+      - path: _test\.go
+        linters:
+          - gosec
+          - noctx
+          - bodyclose
+
+formatters:
+  enable:
+    - gofmt
+    - goimports

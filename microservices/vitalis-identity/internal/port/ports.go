@@ -1,6 +1,6 @@
 package port
 
-import(
+import (
 	"context"
 	"time"
 
@@ -8,7 +8,7 @@ import(
 )
 
 type UserRepository interface {
-	Create(ctx context.Context, u domain.User, passwordHash string) error 
+	Create(ctx context.Context, u domain.User, passwordHash string) error
 	FindByEmail(ctx context.Context, email string) (domain.User, string, error)
 	FindByID(ctx context.Context, id string) (domain.User, error)
 	UpdateProfile(ctx context.Context, u domain.User) error
@@ -44,4 +44,5 @@ type TokenIssuer interface {
 }
 type Clock interface{ Now() time.Time }
 type RealClock struct{}
+
 func (RealClock) Now() time.Time { return time.Now().UTC() }

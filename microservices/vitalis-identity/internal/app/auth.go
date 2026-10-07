@@ -207,4 +207,3 @@ func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
 func (s *AuthService) JWKS() (map[string]any, error) {
 	return s.tokens.PublicJWKS()
 }
-

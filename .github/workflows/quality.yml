@@ -1,0 +1,128 @@
+name: quality
+
+on:
+  push:
+    branches: [dev, master]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Descobre os serviços Go (pastas em microservices/ com go.mod) para a matriz.
+  discover:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.find.outputs.services }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: find
+        run: |
+          services=$(find microservices -mindepth 2 -maxdepth 2 -name go.mod -printf '%h\n' | sort | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "services=$services" >> "$GITHUB_OUTPUT"
+
+  go:
+    name: go (${{ matrix.service }})
+    needs: discover
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJson(needs.discover.outputs.services) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: ${{ matrix.service }}/go.mod
+          cache-dependency-path: ${{ matrix.service }}/go.sum
+
+      - name: go mod tidy (sem diferenças)
+        run: |
+          go mod tidy
+          git diff --exit-code -- go.mod go.sum
+
+      - name: go vet
+        run: go vet ./...
+
+      # golangci-lint inclui staticcheck, gosec, errcheck, gofmt e goimports (.golangci.yml na raiz).
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
+          install-mode: goinstall
+          working-directory: ${{ matrix.service }}
+          args: --config=${{ github.workspace }}/.golangci.yml
+
+      - name: go test (race + cobertura)
+        run: |
+          go test -race -covermode=atomic -coverprofile=coverage.out ./...
+          echo "### Cobertura: ${{ matrix.service }}" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          go tool cover -func=coverage.out | tail -n 1 >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+      - name: build
+        run: go build -o /tmp/app ./cmd/api
+
+      - name: salvar cobertura
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-${{ strategy.job-index }}
+          path: ${{ matrix.service }}/coverage.out
+
+  trivy:
+    name: trivy (deps, segredos, Dockerfiles)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,secret,misconfig
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+  semgrep:
+    name: semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v7
+      - run: semgrep scan --config p/golang --config p/secrets --config p/dockerfile --error --metrics=off
+
+  gitleaks:
+    name: gitleaks
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: instalar gitleaks
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+      - name: arquivos atuais
+        run: gitleaks dir . --redact --verbose
+      # Só os commits novos: o histórico antigo do dev ainda contém a chave vazada (removida em 28bc622).
+      - name: commits do PR
+        if: github.event_name == 'pull_request'
+        run: gitleaks git . --redact --verbose --log-opts="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+      - name: commits do push
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: gitleaks git . --redact --verbose --log-opts="${{ github.event.before }}..${{ github.sha }}"

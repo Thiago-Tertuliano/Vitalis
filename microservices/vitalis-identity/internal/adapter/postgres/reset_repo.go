@@ -30,7 +30,7 @@ func (r *ResetRepo) Consume(ctx context.Context, token string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer tx.Rollback(ctx)
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	var userID string
 	err = tx.QueryRow(ctx, `
